@@ -1,7 +1,9 @@
 name: OIDC testing
 
-on: push
-
+on:
+  push
+env:
+  AWS_REGION : "us-east-1"
 jobs:
   oidc:
     permissions:
