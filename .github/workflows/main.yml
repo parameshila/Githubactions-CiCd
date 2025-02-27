@@ -17,4 +17,4 @@ jobs:
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: arn:aws:iam::976193224554:role/github-action-oidc
-		  role-session-name: githuboidctest
+          role-session-name: githuboidctest
