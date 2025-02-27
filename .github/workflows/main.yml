@@ -1,11 +1,20 @@
-name: hello-world
-on:
-  push:
-  workflow_dispatch:
+name: OIDC testing
+
+on: push
 
 jobs:
-  build:
+  oidc:
+    permissions:
+      id-token: write
+      contents: read
     runs-on: ubuntu-latest
     steps:
-      - name: my-step
-        run: echo "Hello World!"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::976193224554:role/github-action-oidc
+		  role-session-name: githuboidctest
