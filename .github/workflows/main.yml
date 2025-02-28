@@ -1,9 +1,16 @@
-name: OIDC testing
+name: CI-CD
 
 on:
-  push
+  workflow_dispatch:
+  push:
+    branches:
+      - main  # Adjust based on your branch strategy
+
 env:
-  AWS_REGION : "us-east-1"
+  AWS_REGION: "us-east-1"
+  IMAGE_REPO_NAME: "github-action-cicd"
+  IMAGE_TAG: "latest"
+
 jobs:
   oidc:
     permissions:
@@ -20,3 +27,13 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: githuboidctest
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} .
+          docker tag ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
