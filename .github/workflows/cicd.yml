@@ -48,6 +48,7 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
+          ls -l Dockerfile
           docker build -t ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} .
           docker tag ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
