@@ -1,5 +1,5 @@
 name: CI-CD
-
+#You can also use cancel-in-progress to cancel any currently running job or workflow in the same concurrency group
 # concurrency:
 #   group: dev
 #   cancel-in-progress: true
