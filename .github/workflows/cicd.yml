@@ -12,7 +12,7 @@ env:
   IMAGE_TAG: "latest"
 
 jobs:
-  oidc:
+  pre-build:
     permissions:
       id-token: write
       contents: read
@@ -27,7 +27,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: githuboidctest
-
+  post-build:
+    runs-on: ubuntu-latest
+    steps:
       - name: Login to Amazon ECR
         run: |
           aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
