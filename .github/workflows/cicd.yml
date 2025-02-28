@@ -28,6 +28,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: githuboidctest
   post-build:
+    needs: pre-build
     runs-on: ubuntu-latest
     steps:
       - name: Login to Amazon ECR
