@@ -19,6 +19,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        
+      - name: checking context variable
+        run: |
+          echo "Repository name: ${{ github.repository }} "
+          echo "Workflow name: ${{ github.workflow }} "
+          echo "Triggered by:  ${{ github.triggering_actor }}"
+          echo "Github Job: ${{ github.job }} "
 
   ecr-push:
     runs-on: ubuntu-latest
