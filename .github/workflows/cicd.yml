@@ -27,6 +27,35 @@ jobs:
           echo "Triggered by:  ${{ github.triggering_actor }}"
           echo "Github Job: ${{ github.job }} "
 
+  s3-push:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Create File and Add Content
+        run: |
+          echo "This is a test file created by GitHub Actions." > test.txt
+          echo "Timestamp: $(date)" >> test.txt
+          cat test.txt
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+
+      - name: Mask AWS ROLE ARN
+        run: echo "::add-mask::${{ secrets.AWS_ROLE_ARN }}"
+        
+      - name: Mask AWS Account ID
+        run: echo "::add-mask::${{ secrets.AWS_ACCOUNT_ID }}"
+          
+      - name: Upload File to S3
+        run: |
+          aws s3 cp test.txt arn:aws:s3:::devops-artifact-bkt/test.txt
+          
   ecr-push:
     runs-on: ubuntu-latest
     needs: build
