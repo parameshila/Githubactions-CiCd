@@ -22,18 +22,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Assume OIDC role
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          role-session-name: githuboidctest
+      # - name: Assume OIDC role
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-region: ${{ env.AWS_REGION }}
+      #     role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+      #     role-session-name: githuboidctest
           
-      - name: Mask AWS ROLE ARN
-        run: echo "::add-mask::${{ secrets.AWS_ROLE_ARN }}"
+      # - name: Mask AWS ROLE ARN
+      #   run: echo "::add-mask::${{ secrets.AWS_ROLE_ARN }}"
         
-      - name: Mask AWS Account ID
-        run: echo "::add-mask::${{ secrets.AWS_ACCOUNT_ID }}"
+      # - name: Mask AWS Account ID
+      #   run: echo "::add-mask::${{ secrets.AWS_ACCOUNT_ID }}"
 
   ecr-push:
     runs-on: ubuntu-latest
