@@ -1,26 +1,57 @@
 name: Test user input workflow
 on:
  workflow_dispatch:
-   inputs:
-     number1:
-       description: first number
-       default: 0
-       required: true
-     number2:
-       description: second number
-       default: 0
-       required: true
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+        type: choice
+        options:
+          - info
+          - warning
+          - debug
+      print_tags:
+        description: 'True to print to STDOUT'
+        required: true
+        type: boolean
+      tags:
+        description: 'Test scenario tags'
+        required: true
+        type: string
+      environment:
+        description: 'Environment to run tests against'
+        type: environment
+        required: true
 
 jobs:
-  build-numbers:
+  print-tag:
     runs-on: ubuntu-latest
-
+    if: ${{ inputs.print_tags }} 
     steps:
-      - name:  add numbers
-        id: sum
-        run: echo "::set-output name=sum::$((${{ inputs.number1 }} + ${{ inputs.number2 }}))"
+      - name: Print the input tag to STDOUT
+        run: echo  The tags are ${{ inputs.tags }} 
+#  workflow_dispatch:
+#    inputs:
+#      number1:
+#        description: first number
+#        default: 0
+#        required: true
+#      number2:
+#        description: second number
+#        default: 0
+#        required: true
 
-      - name: display sum
-        run: echo "The sum of ${{ inputs.number1 }} and ${{ inputs.number2 }} is ${{steps.sum.outputs.sum}}"
+# jobs:
+#   build-numbers:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name:  add numbers
+#         id: sum
+#         run: echo "::set-output name=sum::$((${{ inputs.number1 }} + ${{ inputs.number2 }}))"
+
+#       - name: display sum
+#         run: echo "The sum of ${{ inputs.number1 }} and ${{ inputs.number2 }} is ${{steps.sum.outputs.sum}}"
         
        
