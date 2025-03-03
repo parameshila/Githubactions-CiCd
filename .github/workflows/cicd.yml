@@ -14,37 +14,29 @@ env:
 jobs:
   build:
     permissions:
-      id-token: write
       contents: read
     runs-on: ubuntu-latest
-    #environment: dev
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # - name: Assume OIDC role
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     aws-region: ${{ env.AWS_REGION }}
-      #     role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-      #     role-session-name: githuboidctest
-          
-      # - name: Mask AWS ROLE ARN
-      #   run: echo "::add-mask::${{ secrets.AWS_ROLE_ARN }}"
-        
-      # - name: Mask AWS Account ID
-      #   run: echo "::add-mask::${{ secrets.AWS_ACCOUNT_ID }}"
-
   ecr-push:
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      id-token: write  # Ensure this permission is available for OIDC authentication
+      contents: read
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Assume OIDC role
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: githuboidctest
+
       - name: Mask AWS ROLE ARN
         run: echo "::add-mask::${{ secrets.AWS_ROLE_ARN }}"
         
