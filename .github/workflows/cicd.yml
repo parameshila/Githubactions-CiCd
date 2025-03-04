@@ -12,6 +12,16 @@ env:
   IMAGE_TAG: "latest"
 
 jobs:
+  notify-start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify SNS on Build Start
+        run: |
+          aws sns publish \
+            --region $AWS_REGION \
+            --topic-arn $SNS_TOPIC_ARN \
+            --message "GitHub Actions Build Started for Repository: ${{ github.repository }} on Branch: ${{ github.ref }} by ${{ github.actor }}" \
+            --subject "GitHub Actions"
   build:
     permissions:
       contents: read
@@ -25,7 +35,7 @@ jobs:
           echo "Repository name: ${{ github.repository }} "
           echo "Workflow name: ${{ github.workflow }} "
           echo "Triggered by:  ${{ github.triggering_actor }}"
-          echo "Github Job: ${{ github.job }} "
+
 
   s3-push:
     runs-on: ubuntu-latest
