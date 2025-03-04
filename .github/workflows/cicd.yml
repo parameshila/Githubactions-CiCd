@@ -100,6 +100,9 @@ jobs:
   notify-success:
     runs-on: ubuntu-latest
     needs: [s3-push, ecr-push]
+    permissions:
+      id-token: write
+      contents: read
     if: success()
     steps:
       - name: Assume OIDC role
@@ -119,6 +122,9 @@ jobs:
 
   notify-failure:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     if: failure()
     steps:
       - name: Assume OIDC role
