@@ -15,6 +15,13 @@ jobs:
   notify-start:
     runs-on: ubuntu-latest
     steps:
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+          
       - name: Notify SNS on Build Start
         run: |
           aws sns publish \
