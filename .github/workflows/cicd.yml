@@ -14,6 +14,9 @@ env:
 jobs:
   notify-start:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Assume OIDC role
         uses: aws-actions/configure-aws-credentials@v4
