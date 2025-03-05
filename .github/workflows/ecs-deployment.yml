@@ -1,0 +1,126 @@
+name: CI/CD for ECS application
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main 
+
+env:
+  AWS_REGION: "us-east-1"
+  IMAGE_REPO_NAME: "github-action-cicd"
+  IMAGE_TAG: "latest"
+
+jobs:
+  notify-start:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+      
+      - name: Notify SNS on Build Start
+        run: |
+          aws sns publish \
+            --region $AWS_REGION \
+            --topic-arn ${{ secrets.SNS_TOPIC_ARN }} \
+            --message "GitHub Actions Build Started for Repository: ${{ github.repository }} on Branch: ${{ github.ref }} by ${{ github.actor }}" \
+            --subject "GitHub Actions"
+
+  build:
+    runs-on: ubuntu-latest
+    needs: notify-start
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Checking context variable
+        run: |
+          echo "Repository name: ${{ github.repository }}"
+          echo "Workflow name: ${{ github.workflow }}"
+          echo "Triggered by: ${{ github.triggering_actor }}"
+
+  ecr-push:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+      
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+      
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} .
+          docker tag ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Update ECS service
+        env:
+          CLUSTER_NAME: ${{ secrets.ECS_CLUSTER } 
+          SERVICE_NAME: ${{ secrets.ECS_SERVICE }
+        run: |
+          aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
+
+  notify-success:
+    runs-on: ubuntu-latest
+    needs: [ecr-push]
+    permissions:
+      id-token: write
+      contents: read
+    if: success()
+    steps:
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+      
+      - name: Notify SNS on Success
+        run: |
+          aws sns publish \
+            --region $AWS_REGION \
+            --topic-arn ${{ secrets.SNS_TOPIC_ARN }} \
+            --message "GitHub Actions Build Succeeded for Repository: ${{ github.repository }} on Branch: ${{ github.ref }}" \
+            --subject "GitHub Actions Success"
+
+  notify-failure:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    if: failure()
+    steps:
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+      
+      - name: Notify SNS on Failure
+        run: |
+          aws sns publish \
+            --region $AWS_REGION \
+            --topic-arn ${{ secrets.SNS_TOPIC_ARN }} \
+            --message "GitHub Actions Build Failed for Repository: ${{ github.repository }} on Branch: ${{ github.ref }}" \
+            --subject "GitHub Actions Failure"
