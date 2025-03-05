@@ -88,15 +88,24 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: githuboidctest
-      - name: Mask Cluster and Service Name and update the ECS
+          
+      - name: Debug Variables
+        run: |
+          echo "CLUSTER_NAME: '${{ secrets.CLUSTER_NAME }}'"
+          echo "SERVICE_NAME: '${{ secrets.SERVICE_NAME }}'"
+          if [[ -z "${{ secrets.CLUSTER_NAME }}" || -z "${{ secrets.SERVICE_NAME }}" ]]; then
+            echo "Error: Missing required environment variables!"
+            exit 1
+          fi
+
+      - name: Mask Secrets
         run: |
           echo "::add-mask::${{ secrets.CLUSTER_NAME }}"
           echo "::add-mask::${{ secrets.SERVICE_NAME }}"
 
       - name: Force New Deployment on ECS
         run: |
-          aws ecs update-service --cluster ${{ secrets.CLUSTER_NAME }} --service ${{ secrets.SERVICE_NAME }} --force-new-deployment --region ${{ env.AWS_REGION }}
-
+          aws ecs update-service --cluster "${{ secrets.CLUSTER_NAME }}" --service "${{ secrets.SERVICE_NAME }}" --force-new-deployment
 
 
   # notify-success:
