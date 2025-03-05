@@ -94,6 +94,12 @@ jobs:
           SERVICE_NAME=${{ secrets.ECS_SERVICE }}
           aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
 
+      - name: Mask AWS ROLE ARN
+        run: echo "::add-mask::${{ secrets.ECS_CLUSTER }}"
+        
+      - name: Mask AWS Account ID
+        run: echo "::add-mask::${{ secrets.ECS_SERVICE }}"
+
 
   # notify-success:
   #   runs-on: ubuntu-latest
