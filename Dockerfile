@@ -1,17 +1,17 @@
-# Use an official lightweight Python image
-FROM python:3.9-slim
+# Use an official Python runtime as a parent image
+FROM python:3.9
 
 # Set the working directory
 WORKDIR /app
 
-# Copy the app files
-COPY app.py .
+# Copy the current directory contents into the container
+COPY . .
 
 # Install dependencies
 RUN pip install flask
 
-# Expose the container port
+# Expose port 5000
 EXPOSE 8080
 
-# Run the application
+# Command to run the application
 CMD ["python", "app.py"]
