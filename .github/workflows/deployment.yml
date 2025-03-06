@@ -1,4 +1,4 @@
-name: CI/CD for ECS application
+name: ECS application deployment
 
 on:
   workflow_dispatch:
