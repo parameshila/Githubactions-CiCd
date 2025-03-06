@@ -16,12 +16,22 @@
             color: red;
             animation: blink 1s infinite;
         }
+        /* Center content */
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Full screen height */
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <h1 class="blink">Click the link below to open the website:</h1>
-    
-    <!-- Opens the website when clicked -->
-    <a href="https://www.idexcel.com" target="_blank">Visit Idexcel Website</a>
+    <div class="container">
+        <h1 class="blink">Click the link below to open the IDEXCEL website:</h1>
+        <!-- Opens the website when clicked -->
+        <a href="https://www.idexcel.com" target="_blank">Visit Idexcel Website</a>
+    </div>
 </body>
 </html>
