@@ -4,11 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WELCOME TO IDEXCEL</title>
+    <style>
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .blink {
+            font-size: 24px;
+            font-weight: bold;
+            color: red;
+            animation: blink 1s infinite;
+        }
+    </style>
 </head>
 <body>
-    <h1>Click the link below to open the IDEXCEL website:</h1>
+    <h1 class="blink">Click the link below to open the website:</h1>
     
     <!-- Opens the website when clicked -->
-    <a href="https://www.idexcel.com" target="_blank">Visit IDEXCEL Website</a>
+    <a href="https://www.idexcel.com" target="_blank">Visit Idexcel Website</a>
 </body>
 </html>
