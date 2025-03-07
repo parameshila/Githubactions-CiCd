@@ -152,4 +152,3 @@ jobs:
   #           --topic-arn ${{ secrets.SNS_TOPIC_ARN }} \
   #           --message "GitHub Actions Build Failed for Repository: ${{ github.repository }} on Branch: ${{ github.ref }}" \
   #           --subject "GitHub Actions Failure"
-  #
