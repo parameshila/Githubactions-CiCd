@@ -34,7 +34,7 @@ jobs:
   #           --subject "GitHub Actions"
 
   build:
-    runs-on: ubuntu-latest #self-hosted
+    runs-on: self-hosted
     #needs: notify-start
     steps:
       - name: Checkout code
@@ -47,7 +47,7 @@ jobs:
           echo "Triggered by: ${{ github.triggering_actor }}"
 
   ecr-push:
-    runs-on: ubuntu-latest #self-hosted
+    runs-on: self-hosted #ubuntu-latest
     needs: build
     permissions:
       id-token: write
