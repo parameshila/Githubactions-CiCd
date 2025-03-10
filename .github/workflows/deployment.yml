@@ -34,7 +34,7 @@ jobs:
   #           --subject "GitHub Actions"
 
   build:
-    runs-on: ubuntu-latest #self-hosted
+    runs-on: self-hosted
     #needs: notify-start
     steps:
       - name: Checkout code
@@ -47,7 +47,7 @@ jobs:
           echo "Triggered by: ${{ github.triggering_actor }}"
 
   ecr-push:
-    runs-on: ubuntu-latest #self-hosted 
+    runs-on: self-hosted 
     needs: build
     permissions:
       id-token: write
@@ -73,7 +73,7 @@ jobs:
           docker tag ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
   ecs-deploy:
-    runs-on: ubuntu-latest #self-hosted
+    runs-on: self-hosted
     needs: ecr-push
     permissions:
       id-token: write
