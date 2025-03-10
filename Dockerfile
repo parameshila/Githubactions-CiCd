@@ -13,5 +13,5 @@ RUN pip install flask
 # Expose the container port
 EXPOSE 8080
 
-# Run the application
+## Run the application
 CMD ["python", "app.py"]
