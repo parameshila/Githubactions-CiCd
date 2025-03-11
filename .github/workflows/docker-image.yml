@@ -2,8 +2,8 @@ name: Docker Image CI
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ "paramesh-dev" ]
+  # push:
+  #   branches: [ "paramesh-dev" ]
 
 env:
   AWS_REGION: "us-east-1"
