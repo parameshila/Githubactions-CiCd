@@ -4,6 +4,8 @@ on:
  workflow_dispatch:
  push:
    branches: [ "paramesh-dev" ]
+env:
+  AWS_REGION: "us-east-1"
  
 jobs:
   build:
