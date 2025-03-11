@@ -4,15 +4,28 @@ on:
  workflow_dispatch:
  push:
    branches: [ "paramesh-dev" ]
-
-
+ 
 jobs:
-
   build:
-
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
+    permissions:
+      id-token: write
+      contents: read
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      - uses: actions/checkout@v4
+      
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+         
+      - name: Checking context variable
+        run: |
+          echo "Repository name: ${{ github.repository }}"
+          echo "Workflow name: ${{ github.workflow }}"
+          echo "Triggered by: ${{ github.triggering_actor }}"
+    
+      - name: Build the Docker image
+        run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
