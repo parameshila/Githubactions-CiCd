@@ -1,4 +1,4 @@
-name: ECS application deployment
+name: ECS application deployment paramesh-dev
 
 on:
   workflow_dispatch:
