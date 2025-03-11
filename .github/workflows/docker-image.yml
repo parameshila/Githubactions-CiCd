@@ -25,6 +25,7 @@ jobs:
          
       - name: Checking context variable
         run: |
+          echo "Current Branch: ${{ github.ref }}"
           echo "Repository name: ${{ github.repository }}"
           echo "Workflow name: ${{ github.workflow }}"
           echo "Triggered by: ${{ github.triggering_actor }}"
