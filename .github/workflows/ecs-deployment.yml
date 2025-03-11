@@ -1,4 +1,4 @@
-name: CI/CD for ECS application
+name: CI/CD for ECS application main branch
 
 on:
   workflow_dispatch:
