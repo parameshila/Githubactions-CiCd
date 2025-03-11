@@ -1,12 +1,13 @@
 name: Docker Image CI
 
 on:
- workflow_dispatch:
- push:
-   branches: [ "paramesh-dev" ]
+  workflow_dispatch:
+  push:
+    branches: [ "paramesh-dev" ]
+
 env:
   AWS_REGION: "us-east-1"
- 
+
 jobs:
   build:
     runs-on: self-hosted
@@ -14,21 +15,22 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout paramesh-dev branch
+        uses: actions/checkout@v4
+        with:
+          ref: "paramesh-dev"
+
       - name: Assume OIDC role
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           role-session-name: githuboidctest
-         
+
       - name: Checking context variable
         run: |
           echo "Current Branch: ${{ github.ref }}"
           echo "Repository name: ${{ github.repository }}"
-          echo "Workflow name: ${{ github.workflow }}"
-          echo "Triggered by: ${{ github.triggering_actor }}"
-    
+
       - name: Build the Docker image
         run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
