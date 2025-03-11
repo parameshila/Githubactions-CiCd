@@ -1,0 +1,63 @@
+name: Manual Build and Deploy
+
+on:
+  workflow_dispatch:  # Allows manual triggering
+  push:
+    branches:
+      - ec2-deploy
+env:
+  AWS_REGION: "us-east-1"
+
+
+jobs:
+  build:
+    runs-on: self-hosted
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+
+      - name: Checking context variable
+        run: |
+          echo "Repository name: ${{ github.repository }}"
+          echo "Workflow name: ${{ github.workflow }}"
+          echo "Triggered by: ${{ github.triggering_actor }}"
+
+      - name: Download BuildSpec from S3
+        run: |
+          aws s3 cp s3://devops-scripts-bkt/dev/application/buildspec.yml ./buildspec.yml
+
+      - name: Run Build Process
+        run: |
+          chmod +x ./buildspec.yml
+          ./buildspec.yml
+
+  # deploy:
+  #   runs-on: self-hosted
+  #   needs: build  # Ensures deployment only runs after build completion
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   steps:
+  #     - name: Checkout Repository
+  #       uses: actions/checkout@v4
+
+  #     - name: Assume OIDC role
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ env.AWS_REGION }}
+  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+  #         role-session-name: githuboidctest
+          
+  #     - name: Run Ansible Playbook
+  #       run: |
+  #         ansible-playbook -i inventory.ini deploy.yml
