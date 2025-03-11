@@ -2,8 +2,17 @@ name: Docker Image CI
 
 on:
   workflow_dispatch:
+    inputs:
+      name:
+        description: 'Enter the branch name'
+        required: true
+        default: 'paramesh-dev'
+        type: string
+    
   # push:
   #   branches: [ "paramesh-dev" ]
+  
+   
 
 env:
   AWS_REGION: "us-east-1"
@@ -18,7 +27,7 @@ jobs:
       - name: Checkout paramesh-dev branch
         uses: actions/checkout@v4
         with:
-          ref: "paramesh-dev"
+          ref: ${{ inputs.name }}
 
       - name: Assume OIDC role
         uses: aws-actions/configure-aws-credentials@v4
