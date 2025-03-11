@@ -1,17 +1,17 @@
-# Use an official lightweight Python image
-FROM python:3.9-slim
+# # Use an official lightweight Python image
+# FROM python:3.9-slim
 
-# Set the working directory
-WORKDIR /app
+# # Set the working directory
+# WORKDIR /app
 
-# Copy the app files
-COPY app.py .
+# # Copy the app files
+# COPY app.py .
 
-# Install dependencies
-RUN pip install flask
+# # Install dependencies
+# RUN pip install flask
 
-# Expose the container port
-EXPOSE 8080
+# # Expose the container port
+# EXPOSE 8080
 
-## Run the application
-CMD ["python", "app.py"]
+# ## Run the application
+# CMD ["python", "app.py"]
