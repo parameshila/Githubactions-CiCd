@@ -2,9 +2,16 @@ name: ECS application deployment paramesh-dev
 
 on:
   workflow_dispatch:
+    inputs:
+      name:
+        description: 'Enter the branch name'
+        required: true
+        default: 'paramesh-dev'
+        type: string
   push:
     branches:
-      - paramesh-dev 
+      - paramesh-dev
+    
 
 env:
   AWS_REGION: "us-east-1"
@@ -39,6 +46,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.name }}
       
       - name: Checking context variable
         run: |
