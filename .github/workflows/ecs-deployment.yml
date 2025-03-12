@@ -1,0 +1,216 @@
+
+name: ECS application deployment paramesh-dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Enter the branch name'
+        required: true
+        default: 'paramesh-dev'
+        type: string
+  # push:
+  #   branches:
+  #     - paramesh-dev
+    
+
+env:
+  AWS_REGION: "us-east-1"
+  IMAGE_REPO_NAME: "github-action-cicd"
+  IMAGE_TAG: "latest"
+
+jobs:
+  # notify-start:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   steps:
+  #     - name: Assume OIDC role
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ env.AWS_REGION }}
+  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+  #         role-session-name: githuboidctest
+      
+  #     - name: Notify SNS on Build Start
+  #       run: |
+  #         aws sns publish \
+  #           --region $AWS_REGION \
+  #           --topic-arn ${{ secrets.SNS_TOPIC_ARN }} \
+  #           --message "GitHub Actions Build Started for Repository: ${{ github.repository }} on Branch: ${{ github.ref }} by ${{ github.actor }}" \
+  ##           --subject "GitHub Actions"
+
+  build:
+    runs-on: self-hosted
+    #needs: notify-start
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.name }}
+      
+      - name: Checking context variable
+        run: |
+          echo "Repository name: ${{ github.repository }}"
+          echo "Workflow name: ${{ github.workflow }}"
+          echo "Triggered by: ${{ github.triggering_actor }}"
+
+  ecr-push:
+    runs-on: self-hosted
+    needs: build
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+      
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+      
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} .
+          docker tag ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
+  ecs-deploy:
+    runs-on: self-hosted
+    needs: ecr-push
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+          
+      - name: Debug Variables
+        run: |
+          echo "CLUSTER_NAME: '${{ secrets.ECS_CLUSTER }}'"
+          echo "SERVICE_NAME: '${{ secrets.ECS_SERVICE }}'"
+          if [[ -z "${{ secrets.ECS_CLUSTER }}" || -z "${{ secrets.ECS_SERVICE }}" ]]; then
+            echo "Error: Missing required environment variables!"
+            exit 1
+          fi
+
+      - name: Mask Secrets
+        run: |
+          echo "::add-mask::${{ secrets.ECS_CLUSTER }}"
+          echo "::add-mask::${{ secrets.ECS_SERVICE }}"
+
+      - name: Deployment Ecs
+        run: |
+          echo "get the current Desired task count"
+          desired_task_count=$(aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE --query 'services[*].desiredCount' --output text)
+          echo "Desired task count" $desired_task_count
+      
+          echo "get the tasks count"
+          task_count=$(aws ecs list-tasks --cluster $ECS_CLUSTER --service-name $ECS_SERVICE --query 'taskArns[*]' --output text | wc -l)
+          echo "task count" $task_count
+      
+          if [ $task_count -gt 0 ]; then
+          echo "get list of task arns"
+          task_arns=$(aws ecs list-tasks --cluster $ECS_CLUSTER --service-name $ECS_SERVICE --query 'taskArns[*]' --output text)
+          echo $task_arns > task_arns_list.txt
+          if [ -s task_arns_list.txt ]; then
+          IFS=' ' read -r -a task_arns_list < task_arns_list.txt
+          echo ${task_arns_list[@]}
+          container_id_list_number=${#task_arns_list[@]}	
+          fi
+          for u in "${task_arns_list[@]}"
+          do
+            echo "task arns" ${u}      
+            echo "stop all tasks"  
+            echo "get the ecs ec2 instance ids"
+            container_instance_ids=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks ${u} --query 'tasks[0].containerInstanceArn' --output text)
+            echo $container_instance_ids
+            aws ecs stop-task --cluster $ECS_CLUSTER --task ${u}
+            echo $container_instance_ids
+            start_task=$(aws ecs start-task --cluster $ECS_CLUSTER --container-instances $container_instance_ids --task-definition $TASK_DEFINITION --overrides '{"containerOverrides":[{"name":"Nds-Cync-UatV3-Auth-Prl-Svc"}]}' --query 'tasks[0].taskArn' --output text)
+            echo $start_task
+            statecheck=0
+            while [ $statecheck -eq 0 ]; do
+              echo "sleep 30 seconds"
+              sleep 30
+              echo "check if task is running"
+              task_status=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $start_task --query 'tasks[0].lastStatus' --output text)
+              echo "task status" $task_status
+              if [ "$task_status" = "STOPPED" ]; then
+                echo "task stopped"
+                break
+              else
+                echo "codepipeline to wait for task to stop"  
+              fi
+            done
+            done
+            else
+            echo "No Tasks are running"
+          fi
+              
+            echo "setting desired count to" $desired_task_count
+            aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --desired-count $desired_task_count
+
+      # - name: Force New Deployment on ECS
+      #   run: |
+      #     aws ecs update-service --cluster "${{ secrets.ECS_CLUSTER }}" --service "${{ secrets.ECS_SERVICE }}" --force-new-deployment
+
+
+  # notify-success:
+  #   runs-on: ubuntu-latest
+  #   needs: [ecr-push]
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   if: success()
+  #   steps:
+  #     - name: Assume OIDC role
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ env.AWS_REGION }}
+  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+  #         role-session-name: githuboidctest
+      
+  #     - name: Notify SNS on Success
+  #       run: |
+  #         aws sns publish \
+  #           --region $AWS_REGION \
+  #           --topic-arn ${{ secrets.SNS_TOPIC_ARN }} \
+  #           --message "GitHub Actions Build Succeeded for Repository: ${{ github.repository }} on Branch: ${{ github.ref }}" \
+  #           --subject "GitHub Actions Success"
+
+  # notify-failure:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   if: failure()
+  #   steps:
+  #     - name: Assume OIDC role
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-region: ${{ env.AWS_REGION }}
+  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+  #         role-session-name: githuboidctest
+      
+  #     - name: Notify SNS on Failure
+  #       run: |
+  #         aws sns publish \
+  #           --region $AWS_REGION \
+  #           --topic-arn ${{ secrets.SNS_TOPIC_ARN }} \
+  #           --message "GitHub Actions Build Failed for Repository: ${{ github.repository }} on Branch: ${{ github.ref }}" \
+  #           --subject "GitHub Actions Failure"
