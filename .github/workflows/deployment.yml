@@ -31,7 +31,7 @@ jobs:
   #           --region $AWS_REGION \
   #           --topic-arn ${{ secrets.SNS_TOPIC_ARN }} \
   #           --message "GitHub Actions Build Started for Repository: ${{ github.repository }} on Branch: ${{ github.ref }} by ${{ github.actor }}" \
-  #           --subject "GitHub Actions"
+  ##           --subject "GitHub Actions"
 
   build:
     runs-on: self-hosted
