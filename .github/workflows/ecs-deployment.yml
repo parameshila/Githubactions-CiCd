@@ -115,55 +115,30 @@ jobs:
 
       - name: Deployment Ecs
         run: |
-          echo "get the current Desired task count"
-          desired_task_count=$(aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE --query 'services[*].desiredCount' --output text)
-          echo "Desired task count" $desired_task_count
-      
-          echo "get the tasks count"
-          task_count=$(aws ecs list-tasks --cluster $ECS_CLUSTER --service-name $ECS_SERVICE --query 'taskArns[*]' --output text | wc -l)
-          echo "task count" $task_count
-      
+          echo "Using ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}"
+          echo "Using ECS_SERVICE: ${{ secrets.ECS_SERVICE }}"
+          
+          desired_task_count=$(aws ecs describe-services --cluster ${{ secrets.ECS_CLUSTER }} --services ${{ secrets.ECS_SERVICE }} --query 'services[*].desiredCount' --output text)
+          echo "Desired task count: $desired_task_count"
+
+          task_count=$(aws ecs list-tasks --cluster ${{ secrets.ECS_CLUSTER }} --service-name ${{ secrets.ECS_SERVICE }} --query 'taskArns[*]' --output text | wc -l)
+          echo "Task count: $task_count"
+
           if [ $task_count -gt 0 ]; then
-          echo "get list of task arns"
-          task_arns=$(aws ecs list-tasks --cluster $ECS_CLUSTER --service-name $ECS_SERVICE --query 'taskArns[*]' --output text)
-          echo $task_arns > task_arns_list.txt
-          if [ -s task_arns_list.txt ]; then
-          IFS=' ' read -r -a task_arns_list < task_arns_list.txt
-          echo ${task_arns_list[@]}
-          container_id_list_number=${#task_arns_list[@]}	
-          fi
-          for u in "${task_arns_list[@]}"
-          do
-            echo "task arns" ${u}      
-            echo "stop all tasks"  
-            echo "get the ecs ec2 instance ids"
-            container_instance_ids=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks ${u} --query 'tasks[0].containerInstanceArn' --output text)
-            echo $container_instance_ids
-            aws ecs stop-task --cluster $ECS_CLUSTER --task ${u}
-            echo $container_instance_ids
-            start_task=$(aws ecs start-task --cluster $ECS_CLUSTER --container-instances $container_instance_ids --task-definition $TASK_DEFINITION --overrides '{"containerOverrides":[{"name":"Nds-Cync-UatV3-Auth-Prl-Svc"}]}' --query 'tasks[0].taskArn' --output text)
-            echo $start_task
-            statecheck=0
-            while [ $statecheck -eq 0 ]; do
-              echo "sleep 30 seconds"
-              sleep 30
-              echo "check if task is running"
-              task_status=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $start_task --query 'tasks[0].lastStatus' --output text)
-              echo "task status" $task_status
-              if [ "$task_status" = "STOPPED" ]; then
-                echo "task stopped"
-                break
-              else
-                echo "codepipeline to wait for task to stop"  
-              fi
+            echo "Getting list of task ARNs..."
+            task_arns=$(aws ecs list-tasks --cluster ${{ secrets.ECS_CLUSTER }} --service-name ${{ secrets.ECS_SERVICE }} --query 'taskArns[*]' --output text)
+
+            for task in $task_arns; do
+              echo "Stopping task: $task"
+              aws ecs stop-task --cluster ${{ secrets.ECS_CLUSTER }} --task $task
             done
-            done
-            else
-            echo "No Tasks are running"
+          else
+            echo "No tasks are currently running."
           fi
-              
-            echo "setting desired count to" $desired_task_count
-            aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --desired-count $desired_task_count
+
+          echo "Restoring desired count to $desired_task_count"
+          aws ecs update-service --cluster ${{ secrets.ECS_CLUSTER }} --service ${{ secrets.ECS_SERVICE }} --desired-count $desired_task_count
+
 
       # - name: Force New Deployment on ECS
       #   run: |
