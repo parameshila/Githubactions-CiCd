@@ -113,8 +113,8 @@ jobs:
           echo "Restoring desired count to $desired_task_count"
           aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --desired-count $desired_task_count
           
-          echo "### Compares ECS Task image SHA with the latest ECR image SHA ###"
-          
+      - name: Compares ECS Task image SHA with the latest ECR image SHA
+        run: |
           echo "IMAGE_REPO_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecrname" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
           echo "AWS_REGION=$(aws ssm get-parameter --name "/GithubAction/demo/Region/Awsregion" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
           echo "ECS_CLUSTER=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecscluster" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
