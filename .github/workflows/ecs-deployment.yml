@@ -114,11 +114,11 @@ jobs:
           aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --desired-count $desired_task_count
           echo "### Compares ECS Task image SHA with the latest ECR image SHA ###"
           
-          "ECR_REPO_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecrname" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
-          "AWS_REGION=$(aws ssm get-parameter --name "/GithubAction/demo/Region/Awsregion" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
-          "ECS_CLUSTER_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecscluster" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
-          "ECS_SERVICE_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Servicename/Ecsservice" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
-          "CONTAINER_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Container/Containername" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
+          "ECR_REPO_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecrname" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          "AWS_REGION=$(aws ssm get-parameter --name "/GithubAction/demo/Region/Awsregion" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          "ECS_CLUSTER=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecscluster" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          "ECS_SERVICE=$(aws ssm get-parameter --name "/GithubAction/demo/Servicename/Ecsservice" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          "CONTAINER_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Container/Containername" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
       
           echo "Fetching latest image SHA from ECR"
           LATEST_IMAGE_SHA=$(aws ecr describe-images --repository-name $ECR_REPO_NAME \
@@ -132,7 +132,7 @@ jobs:
           echo "✅ Latest image SHA from ECR: $LATEST_IMAGE_SHA"
       
           echo "Fetching running ECS task ARN"
-          TASK_ARN=$(aws ecs list-tasks --cluster $ECS_CLUSTER_NAME --service-name $ECS_SERVICE_NAME \
+          TASK_ARN=$(aws ecs list-tasks --cluster $ECS_CLUSTER --service-name $ECS_SERVICE \
            --query 'taskArns[0]' --output text --region $AWS_REGION)
       
           if [[ -z "$TASK_ARN" || "$TASK_ARN" == "None" ]]; then
@@ -143,7 +143,7 @@ jobs:
           echo "✅ Running ECS Task ARN: $TASK_ARN"
       
           echo "Fetching running ECS Task image SHA from container"
-          RUNNING_IMAGE_SHA=$(aws ecs describe-tasks --cluster $ECS_CLUSTER_NAME --tasks $TASK_ARN \
+          RUNNING_IMAGE_SHA=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $TASK_ARN \
            --query "tasks[0].containers[?name=='$CONTAINER_NAME'].imageDigest" --output text --region $AWS_REGION)
       
           if [[ -z "$RUNNING_IMAGE_SHA" || "$RUNNING_IMAGE_SHA" == "None" ]]; then
