@@ -112,6 +112,7 @@ jobs:
           
           echo "Restoring desired count to $desired_task_count"
           aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --desired-count $desired_task_count
+  
   ecr-ecs-image-sha-checking:
     runs-on: self-hosted
     needs: ecs-deploy
@@ -140,7 +141,13 @@ jobs:
           echo "ECS_CLUSTER=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecscluster" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
           echo "ECS_SERVICE=$(aws ssm get-parameter --name "/GithubAction/demo/Servicename/Ecsservice" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
           echo "CONTAINER_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Container/Containername" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
-    
+      - name: print the parameterstore values
+        run: |
+          echo "ECS_CLUSTER: $ECS_CLUSTER"
+          echo "ECS_SERVICE: $ECS_SERVICE"
+          echo "AWS_REGION: $AWS_REGION"
+          echo "CONTAINER_NAME: $CONTAINER_NAME"
+
           echo "Fetching latest image SHA from ECR"
           LATEST_IMAGE_SHA=$(aws ecr describe-images --repository-name ${{env.IMAGE_REPO_NAME}} --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageDigest' --output text --region ${{env.AWS_REGION}})
           if [[ -z "$LATEST_IMAGE_SHA" || "$LATEST_IMAGE_SHA" == "None" ]]; then
@@ -151,17 +158,18 @@ jobs:
           echo "✅ Latest image SHA from ECR: $LATEST_IMAGE_SHA"
       
           echo "Fetching running ECS task ARN"
-          TASK_ARN=$(aws ecs list-tasks --cluster ${{env.ECS_CLUSTER}} --service-name ${{env.ECS_SERVICE}} --query 'taskArns[0]' --output text --region ${{env.AWS_REGION}})
-      
+  
+          TASK_ARN=$(aws ecs list-tasks --cluster $ECS_CLUSTER --service-name $ECS_SERVICE --query 'taskArns[0]' --output text --region $AWS_REGION)
+
           if [[ -z "$TASK_ARN" || "$TASK_ARN" == "None" ]]; then
           echo "❌ Error: No running tasks found in ECS service!"
           exit 1
           fi
-      
+          
           echo "✅ Running ECS Task ARN: $TASK_ARN"
       
           echo "Fetching running ECS Task image SHA from container"
-          RUNNING_IMAGE_SHA=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $TASK_ARN --query "tasks[0].containers[?name=='${{env.CONTAINER_NAME}}'].imageDigest" --output text --region ${{env.AWS_REGION}})
+          RUNNING_IMAGE_SHA=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $TASK_ARN --query "tasks[0].containers[?name=='$CONTAINER_NAME'].imageDigest" --output text --region $AWS_REGION)
       
           if [[ -z "$RUNNING_IMAGE_SHA" || "$RUNNING_IMAGE_SHA" == "None" ]]; then
           echo "❌ Error: Unable to fetch image digest from running ECS Task!"
