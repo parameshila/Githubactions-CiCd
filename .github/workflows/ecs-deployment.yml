@@ -114,11 +114,11 @@ jobs:
           aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --desired-count $desired_task_count
           echo "### Compares ECS Task image SHA with the latest ECR image SHA ###"
           
-          "ECR_REPO_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecrname" --query "Parameter.Value" --output text)"
-          "AWS_REGION=$(aws ssm get-parameter --name "/GithubAction/demo/Region/Awsregion" --query "Parameter.Value" --output text)" 
-          "ECS_CLUSTER_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecscluster" --query "Parameter.Value" --output text)" 
-          "ECS_SERVICE_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Servicename/Ecsservice" --query "Parameter.Value" --output text)"
-          "CONTAINER_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Container/Containername" --query "Parameter.Value" --output text)"
+          "ECR_REPO_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecrname" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
+          "AWS_REGION=$(aws ssm get-parameter --name "/GithubAction/demo/Region/Awsregion" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
+          "ECS_CLUSTER_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecscluster" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
+          "ECS_SERVICE_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Servicename/Ecsservice" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
+          "CONTAINER_NAME=$(aws ssm get-parameter --name "/GithubAction/demo/Container/Containername" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
       
           echo "Fetching latest image SHA from ECR"
           LATEST_IMAGE_SHA=$(aws ecr describe-images --repository-name $ECR_REPO_NAME \
