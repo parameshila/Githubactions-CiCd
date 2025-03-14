@@ -73,7 +73,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+      - name: Get Parameters from SSM
+        run: |
+          echo "AWS_REGION=$(aws ssm get-parameter --name "/GithubAction/demo/Region/Awsregion" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          echo "ECS_CLUSTER=$(aws ssm get-parameter --name "/GithubAction/demo/Reponame/Ecscluster" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          echo "ECS_SERVICE=$(aws ssm get-parameter --name "/GithubAction/demo/Servicename/Ecsservice" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          
       - name: Assume OIDC role
         uses: aws-actions/configure-aws-credentials@v4
         with:
