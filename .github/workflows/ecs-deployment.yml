@@ -12,6 +12,7 @@ on:
 env:
   IMAGE_REPO_NAME: "github-action-cicd"
   IMAGE_TAG: "latest"
+  AWS_REGION: "us-east-1"
 
 jobs:
   build:
@@ -35,10 +36,6 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: Get Parameters from SSM
-        run: |
-          echo "AWS_REGION=$(aws ssm get-parameter --name "/GithubAction/demo/Region/Awsregion" --query "Parameter.Value" --output text)" >> $GITHUB_ENV
-
       - name: Debug AWS_REGION
         run: echo "AWS_REGION is ${{ env.AWS_REGION }}"
           
