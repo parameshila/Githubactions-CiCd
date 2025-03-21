@@ -1,0 +1,225 @@
+name: ECS Auth application deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Enter the branch name'
+        required: true
+        default: 'auth-upgrade-8'
+        type: string
+
+env:
+  AWS_REGION: "us-east-1"
+  TASK_DEFINITION: "Nds-Cync-Dev2-Auth-Prl-Svc-Ecs-Split-Td"
+  ApplicationRole: "Auth-Prl-Svc"
+  Environment: "Dev2"
+  CONTAINER_NAME: "Nds-Cync-Dev2-Auth-Prl-Svc"
+  ECR_REPO: "nds-cync-dev2-auth-app-prl-ecr-repo"
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.name }}
+      
+      - name: Checking context variable
+        run: |
+          echo "Repository name: ${{ github.repository }}"
+          echo "Workflow name: ${{ github.workflow }}"
+          echo "Triggered by: ${{ github.triggering_actor }}"
+  ecr-push:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Debug AWS_REGION
+        run: echo "AWS_REGION is ${{ env.AWS_REGION }}"
+          
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.name }}
+      
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.DEV2_AWS_OIDC_ROLE_ARN }}
+          role-session-name: githuboidctest
+      
+      - name: Get Parameters from SSM
+        run: |
+          echo "IMAGE_REPO_NAME=$(aws ssm get-parameter --name "/GithubAction/Dev2/Reponame/Authecrreponame" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$(aws ssm get-parameter --name "/GithubAction/Dev2/Imagetagname/Imagetag" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          echo "AWS_ACCOUNT_ID=$(aws ssm get-parameter --name "/GithubAction/Dev2/Account/Awsaccountid" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          #echo "AWS_REGION=$(aws ssm get-parameter --name "/GithubAction/Dev2/Region/Awsregion" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          echo "ECS_CLUSTER=$(aws ssm get-parameter --name "/GithubAction/Dev2/Cluster/Authecscluster" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+          echo "ECS_SERVICE=$(aws ssm get-parameter --name "/GithubAction/Dev2/Service/Authecsservice" --query "Parameter.Value" --output text --region us-east-1)" >> $GITHUB_ENV
+      
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+      
+      - name: Print Commit SHA
+        run: echo "Current Commit SHA=$GITHUB_SHA"
+
+      - name: Build and Push Docker Image
+        run: |
+          echo Build completed on `date`
+          timestamp=$(date -u '+%Y-%m-%d_%H-%M-%S_%Z')
+          GITHUB_BRANCH_NAME=${{ github.ref_name }}
+          artifactversion=$(echo $GITHUB_BRANCH_NAME.$GITHUB_SHA.$timestamp)
+          echo $artifactversion
+          touch version.txt
+          echo "$artifactversion" >> version.html
+          cp version.html cync-base/public/
+          cat cync-base/public/version.html
+          echo "echo Building the Docker image...."
+          cd cync-base
+          docker build -t ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} .
+          docker tag ${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
+          docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
+
+  ecs-deploy:
+    runs-on: ubuntu-latest
+    needs: ecr-push
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Debug AWS_REGION
+        run: echo "AWS_REGION is ${{ env.AWS_REGION }}"
+          
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.name }}
+      
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.DEV2_AWS_OIDC_ROLE_ARN }}
+          role-session-name: githuboidctest
+          
+      - name: Get Parameters from SSM
+        run: |
+          ECS_CLUSTER=$(aws ssm get-parameter --name "/GithubAction/Dev2/Cluster/Authecscluster" --query "Parameter.Value" --output text --region us-east-1)  >> $GITHUB_ENV
+          ECS_SERVICE=$(aws ssm get-parameter --name "/GithubAction/Dev2/Service/Authecsservice" --query "Parameter.Value" --output text --region us-east-1) >> $GITHUB_ENV
+      
+          if [ -z "$ECS_CLUSTER" ]; then
+            echo "ECS_CLUSTER is empty! Exiting..."
+            exit 1
+          fi
+          
+          if [ -z "$ECS_SERVICE" ]; then
+            echo "ECS_SERVICE is empty! Exiting..."
+            exit 1
+          fi
+          
+          echo "ECS_CLUSTER=$ECS_CLUSTER" >> $GITHUB_ENV
+          echo "ECS_SERVICE=$ECS_SERVICE" >> $GITHUB_ENV
+
+      - name: Deploy to ECS
+        run: |
+          echo "Deploying to ECS Cluster: $ECS_CLUSTER"
+          echo "Service Name: $ECS_SERVICE"
+
+          echo "get the current Desired task count"
+          desired_task_count=$(aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE --query 'services[*].desiredCount' --output text)
+          echo "Desired task count" $desired_task_count
+          
+          echo "get the tasks count"
+          task_count=$(aws ecs list-tasks --cluster $ECS_CLUSTER --service-name $ECS_SERVICE --query 'taskArns[*]' --output text | wc -l)
+          echo "task count" $task_count
+          
+          if [ $task_count -gt 0 ]; then
+          echo "get list of task arns"
+          task_arns=$(aws ecs list-tasks --cluster $ECS_CLUSTER --service-name $ECS_SERVICE --query 'taskArns[*]' --output text)
+          echo $task_arns > task_arns_list.txt
+          if [ -s task_arns_list.txt ]; then
+          IFS=' ' read -r -a task_arns_list < task_arns_list.txt
+          echo ${task_arns_list[@]}
+          container_id_list_number=${#task_arns_list[@]}	
+          fi
+          for u in "${task_arns_list[@]}"
+          do
+            echo "task arns" ${u}      
+            echo "stop all tasks"  
+            echo "get the ecs ec2 instance ids"
+            container_instance_ids=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks ${u} --query 'tasks[0].containerInstanceArn' --output text)
+            echo $container_instance_ids
+            aws ecs stop-task --cluster $ECS_CLUSTER --task ${u}
+            echo $container_instance_ids
+            auth_service_Name=$(aws resourcegroupstaggingapi get-resources --tag-filters Key=ApplicationRole,Values=$ApplicationRole Key=Environment,Values=$Environment --resource-type-filters ecs:service --region us-east-1 --query 'ResourceTagMappingList[*].ResourceARN' --output text | awk -F/ '{print $NF}' | sed 's/-Ecs$//')
+            echo "Auth service name: '$auth_service_Name'"
+            start_task=$(aws ecs start-task --cluster $ECS_CLUSTER --container-instances $container_instance_ids --task-definition $TASK_DEFINITION --overrides "{\"containerOverrides\":[{\"name\":\"$auth_service_Name\",\"command\":[\"./deploy_docker.sh\"]}]}" --query 'tasks[0].taskArn' --output text)
+            echo $start_task
+            statecheck=0
+            while [ $statecheck -eq 0 ]; do
+              echo "sleep 30 seconds"
+              sleep 30
+              echo "check if task is running"
+              task_status=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $start_task --query 'tasks[0].lastStatus' --output text)
+              echo "task status" $task_status
+              if [ "$task_status" = "STOPPED" ]; then
+                echo "task stopped"
+                break
+              else
+                echo "codepipeline to wait for task to stop"  
+              fi
+            done
+            done
+            else
+            echo "No Tasks are running"
+          fi
+               
+            echo "setting desired count to" $desired_task_count
+            aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --desired-count $desired_task_count
+          sleep 30
+          ##################################################################
+          # Step 1: Get the latest image SHA from ECR
+          LATEST_IMAGE_SHA=$(aws ecr describe-images --repository-name nds-cync-dev2-auth-app-prl-ecr-repo --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageDigest' --output text)
+    
+          if [[ -z "$LATEST_IMAGE_SHA" || "$LATEST_IMAGE_SHA" == "None" ]]; then
+            echo "❌ Error: Unable to fetch latest image SHA from ECR"
+            exit 1
+          fi
+    
+          echo "✅ Latest image SHA from ECR: $LATEST_IMAGE_SHA"
+    
+          # Step 2: Get the running ECS task ARN
+          TASK_ARN=$(aws ecs list-tasks --cluster $ECS_CLUSTER --service-name $ECS_SERVICE --query 'taskArns[0]' --output text)
+    
+          if [[ -z "$TASK_ARN" || "$TASK_ARN" == "None" ]]; then
+            echo "❌ Error: No running tasks found in ECS service!"
+            exit 1
+          fi
+    
+          echo "✅ Running ECS Task ARN: $TASK_ARN"
+    
+          # Step 3: Get the running ECS Task image SHA from the container
+          RUNNING_IMAGE_SHA=$(aws ecs describe-tasks --cluster $ECS_CLUSTER --tasks $TASK_ARN \
+              --query "tasks[0].containers[?name=='$auth_service_Name'].imageDigest" --output text)
+    
+          if [[ -z "$RUNNING_IMAGE_SHA" || "$RUNNING_IMAGE_SHA" == "None" ]]; then
+            echo "❌ Error: Unable to fetch image digest from running ECS Task!"
+            exit 1
+          fi
+    
+          echo "✅ Running image SHA from ECS Task: $RUNNING_IMAGE_SHA"
+    
+          # Step 4: Compare SHAs
+          if [[ "$LATEST_IMAGE_SHA" == "$RUNNING_IMAGE_SHA" ]]; then
+            echo "✅ Success: ECS task is using the latest image!"
+          else
+            echo "❌ Failure: ECS task is NOT using the latest image!"
+            exit 1
+          fi
