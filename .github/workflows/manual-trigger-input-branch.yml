@@ -1,0 +1,21 @@
+name: Manual Trigger Input Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Target branch to run the workflow on'
+        required: true
+        default: 'paramesh-dev'
+
+jobs:
+  run_on_target_branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.target_branch }}
+
+      - name: Display selected branch
+        run: echo "Running on branch ${{ github.event.inputs.target_branch }}"
