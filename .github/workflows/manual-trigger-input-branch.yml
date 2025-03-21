@@ -19,3 +19,18 @@ jobs:
 
       - name: Display selected branch
         run: echo "Running on branch ${{ github.event.inputs.target_branch }}"
+      
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+
+      - name: Checking context variable
+        run: |
+          echo "Current Branch: ${{ github.ref }}"
+          echo "Repository name: ${{ github.repository }}"
+
+      - name: Build the Docker image
+        run: docker build . --file Dockerfile --tag my-image-name:$(date +%s) 
