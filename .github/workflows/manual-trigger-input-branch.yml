@@ -13,6 +13,9 @@ env:
 jobs:
   run_on_target_branch:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout target branch
         uses: actions/checkout@v4
