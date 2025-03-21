@@ -7,7 +7,9 @@ on:
         description: 'Target branch to run the workflow on'
         required: true
         default: 'paramesh-dev'
-
+env:
+  AWS_REGION: "us-east-1"
+  
 jobs:
   run_on_target_branch:
     runs-on: ubuntu-latest
