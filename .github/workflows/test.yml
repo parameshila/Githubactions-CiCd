@@ -14,7 +14,7 @@ jobs:
     permissions:
       id-token: write  # Required for OIDC authentication
       contents: read
-    runs-on: [self-hosted, paramesh-runner]  # Ensure this runner is registered
+    runs-on: [self-hosted, runner-1]  # Ensure this runner is registered
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
