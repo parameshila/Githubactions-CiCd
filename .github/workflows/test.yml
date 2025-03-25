@@ -28,7 +28,7 @@ jobs:
           
       - name: Create a directory
         run: |
-          mkdir -p /home/ubuntu/paramesh
+          mkdir -p /home/ubuntu/dhruva
   deploy:
     needs: test
     permissions:
@@ -48,7 +48,7 @@ jobs:
 
       - name: Create a directory
         run: |
-          mkdir -p /home/ubuntu/my-directory
+          mkdir -p /home/ubuntu/dhruva
   
       # - name: upload to s3
       #   run: |
