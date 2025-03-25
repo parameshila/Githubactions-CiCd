@@ -1,0 +1,60 @@
+name: Upload Website
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+
+env:
+  S3BUCKET: devops-artifact-bkt
+
+jobs:
+  test:
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: read
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_NAME }}
+          role-session-name: github-actions
+          aws-region: ${{ secrets.AWS_REGION_NAME }}
+          
+      - name: Create a directory
+        run: |
+          mkdir -p /home/ubuntu/Dhruva
+  deploy:
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: read
+    runs-on: self-hosted 
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_NAME }}
+          role-session-name: github-actions
+          aws-region: ${{ secrets.AWS_REGION_NAME }}
+
+      - name: Create a directory
+        run: |
+          mkdir -p /home/ubuntu/my-directory
+  
+      # - name: upload to s3
+      #   run: |
+      #     artifactversion=$(echo ${GITHUB_REF#refs/heads/}.$timestamp)
+      #     artifactname=$(echo $artifactversion.tar.gz)
+      #     aws s3 cp "$artifactname" "s3://${{ env.S3BUCKET }}"
+      # - name: Deploying new code to application server
+      #   run: |
+      #     cd /home/ubuntu/cync-devops-ansible
+      #     ansible-playbook playbooks/directory.yml -i dynamic-inventory/dev/aws_ec2.yml
