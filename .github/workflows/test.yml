@@ -1,4 +1,4 @@
-name: Upload Website
+name: Test
 
 on:
   workflow_dispatch:
@@ -28,8 +28,9 @@ jobs:
           
       - name: Create a directory
         run: |
-          mkdir -p /home/ubuntu/Dhruva
+          mkdir -p /home/ubuntu/paramesh
   deploy:
+    needs: test
     permissions:
       id-token: write  # Required for OIDC authentication
       contents: read
