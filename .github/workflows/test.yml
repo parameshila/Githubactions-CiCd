@@ -1,4 +1,4 @@
-name: Test
+name: Test Workflow
 
 on:
   workflow_dispatch:
@@ -14,48 +14,37 @@ jobs:
     permissions:
       id-token: write  # Required for OIDC authentication
       contents: read
-    runs-on: [self-hosted, paramesh-runner]
+    runs-on: [self-hosted, paramesh-runner]  # Ensure this runner is registered
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
       
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4.1.0
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_NAME }}
           role-session-name: github-actions
           aws-region: ${{ secrets.AWS_REGION_NAME }}
           
       - name: Create a directory
-        run: |
-          mkdir -p /home/ubuntu/dhruva
+        run: mkdir -p /home/ubuntu/dhruva
+
   deploy:
-    needs: test
+    needs: test  # Ensures 'deploy' runs only after 'test' succeeds
     permissions:
-      id-token: write  # Required for OIDC authentication
+      id-token: write
       contents: read
-    runs-on: [self-hosted, runner-2]
+    runs-on: [self-hosted, runner-2]  # Ensure 'runner-2' exists and is online
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
       
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4.1.0
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_NAME }}
           role-session-name: github-actions
           aws-region: ${{ secrets.AWS_REGION_NAME }}
 
       - name: Create a directory
-        run: |
-          mkdir -p /home/ubuntu/dhruva
-  
-      # - name: upload to s3
-      #   run: |
-      #     artifactversion=$(echo ${GITHUB_REF#refs/heads/}.$timestamp)
-      #     artifactname=$(echo $artifactversion.tar.gz)
-      #     aws s3 cp "$artifactname" "s3://${{ env.S3BUCKET }}"
-      # - name: Deploying new code to application server
-      #   run: |
-      #     cd /home/ubuntu/cync-devops-ansible
-      #     ansible-playbook playbooks/directory.yml -i dynamic-inventory/dev/aws_ec2.yml
+        run: mkdir -p /home/ubuntu/dhruva
