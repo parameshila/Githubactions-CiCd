@@ -18,8 +18,36 @@ env:
   AWS_REGION: "us-east-1"
 
 jobs:
+  cleanup-docker-images:
+    runs-on: [self-hosted, runner-1]
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout paramesh-dev branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.name }}
+
+      - name: Assume OIDC role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: githuboidctest
+          
+      - name: Check disk space before cleanup
+        run: df -h
+
+      - name: Remove Docker images with <none> tag
+        run: |
+          docker images --filter "dangling=true" -q | xargs -r docker rmi -f
+
+      - name: Check disk space after cleanup
+        run: df -h
   build:
     runs-on: [self-hosted, runner-1]
+    needs: cleanup-docker-images
     permissions:
       id-token: write
       contents: read
@@ -42,4 +70,4 @@ jobs:
           echo "Repository name: ${{ github.repository }}"
 
       - name: Build the Docker image
-        run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+        run: docker build . --file Dockerfile --tag my-image-name:latest
